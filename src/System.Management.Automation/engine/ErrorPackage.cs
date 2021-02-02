@@ -495,7 +495,7 @@ namespace System.Management.Automation
         /// </remarks>
         internal static string Ellipsize(CultureInfo uiCultureInfo, string original)
         {
-            if (40 >= original.Length)
+            if (original.Length <= 40)
             {
                 return original;
             }
@@ -769,7 +769,10 @@ namespace System.Management.Automation
         /// </remarks>
         public string RecommendedAction
         {
-            get { return ErrorRecord.NotNull(_recommendedAction); }
+            get
+            {
+                return ErrorRecord.NotNull(_recommendedAction);
+            }
 
             set
             {
@@ -1336,7 +1339,7 @@ namespace System.Management.Automation
             string errorDetails_ScriptStackTrace =
                 GetNoteValue(serializedErrorRecord, "ErrorDetails_ScriptStackTrace") as string;
 
-            RemoteException re = new RemoteException((string.IsNullOrWhiteSpace(exceptionMessage) == false) ? exceptionMessage : errorCategory_Message, serializedException, invocationInfo);
+            RemoteException re = new RemoteException((!string.IsNullOrWhiteSpace(exceptionMessage)) ? exceptionMessage : errorCategory_Message, serializedException, invocationInfo);
 
             // Create ErrorRecord
             PopulateProperties(
@@ -1480,7 +1483,7 @@ namespace System.Management.Automation
         /// for that ErrorCategory.
         /// </summary>
         /// <value>never null</value>
-        public ErrorCategoryInfo CategoryInfo { get => _categoryInfo ?? (_categoryInfo = new ErrorCategoryInfo(this)); }
+        public ErrorCategoryInfo CategoryInfo { get => _categoryInfo ??= new ErrorCategoryInfo(this); }
 
         private ErrorCategoryInfo _categoryInfo;
 
@@ -1761,6 +1764,7 @@ namespace System.Management.Automation
     /// <seealso cref="Provider.CmdletProvider"/>
     /// is no longer available.
     /// </remarks>
+#nullable enable
     public interface IContainsErrorRecord
     {
         /// <summary>
@@ -1789,6 +1793,7 @@ namespace System.Management.Automation
         /// </remarks>
         ErrorRecord ErrorRecord { get; }
     }
+#nullable restore
 
     /// <summary>
     /// Objects implementing this interface can be used by

@@ -262,7 +262,7 @@ namespace Microsoft.PowerShell.Commands
 
                 HistoryInfo entry = CoreGetEntry(id);
                 if (entry != null)
-                    if (entry.Cleared == false)
+                    if (!entry.Cleared)
                         return entry.Clone();
 
                 return null;
@@ -416,7 +416,7 @@ namespace Microsoft.PowerShell.Commands
                     }
                     else
                     {
-                        index = _countEntriesAdded;//SmallestIDinBuffer
+                        index = _countEntriesAdded; //SmallestIDinBuffer
 
                         for (long i = count - 1; i >= 0;)
                         {
@@ -496,7 +496,7 @@ namespace Microsoft.PowerShell.Commands
                         for (long i = 0; i <= count - 1;)
                         {
                             if (id > _countEntriesAdded) break;
-                            if (_buffer[GetIndexFromId(id)].Cleared == false && wildcardpattern.IsMatch(_buffer[GetIndexFromId(id)].CommandLine.Trim()))
+                            if (!_buffer[GetIndexFromId(id)].Cleared && wildcardpattern.IsMatch(_buffer[GetIndexFromId(id)].CommandLine.Trim()))
                             {
                                 cmdlist.Add(_buffer[GetIndexFromId(id)].Clone()); i++;
                             }
@@ -520,7 +520,7 @@ namespace Microsoft.PowerShell.Commands
                             }
 
                             if (id < 1) break;
-                            if (_buffer[GetIndexFromId(id)].Cleared == false && wildcardpattern.IsMatch(_buffer[GetIndexFromId(id)].CommandLine.Trim()))
+                            if (!_buffer[GetIndexFromId(id)].Cleared && wildcardpattern.IsMatch(_buffer[GetIndexFromId(id)].CommandLine.Trim()))
                             {
                                 cmdlist.Add(_buffer[GetIndexFromId(id)].Clone()); i++;
                             }
@@ -533,7 +533,7 @@ namespace Microsoft.PowerShell.Commands
                 {
                     for (long i = 1; i <= _countEntriesAdded; i++)
                     {
-                        if (_buffer[GetIndexFromId(i)].Cleared == false && wildcardpattern.IsMatch(_buffer[GetIndexFromId(i)].CommandLine.Trim()))
+                        if (!_buffer[GetIndexFromId(i)].Cleared && wildcardpattern.IsMatch(_buffer[GetIndexFromId(i)].CommandLine.Trim()))
                         {
                             cmdlist.Add(_buffer[GetIndexFromId(i)].Clone());
                         }
@@ -660,7 +660,7 @@ namespace Microsoft.PowerShell.Commands
             for (int i = 0; i < _buffer.Length; i++)
             {
                 // assign the first entry in the buffer as min.
-                if (_buffer[i] != null && _buffer[i].Cleared == false)
+                if (_buffer[i] != null && !_buffer[i].Cleared)
                 {
                     minID = _buffer[i].Id;
                     break;
@@ -669,7 +669,7 @@ namespace Microsoft.PowerShell.Commands
             // check for the minimum id that is not cleared
             for (int i = 0; i < _buffer.Length; i++)
             {
-                if (_buffer[i] != null && _buffer[i].Cleared == false)
+                if (_buffer[i] != null && !_buffer[i].Cleared)
                     if (minID > _buffer[i].Id)
                         minID = _buffer[i].Id;
             }
@@ -755,11 +755,11 @@ namespace Microsoft.PowerShell.Commands
         /// Get the current history size.
         /// </summary>
         /// <returns></returns>
-        private int GetHistorySize()
+        private static int GetHistorySize()
         {
             int historySize = 0;
             var executionContext = LocalPipeline.GetExecutionContextFromTLS();
-            object obj = (executionContext != null) ? executionContext.GetVariableValue(SpecialVariables.HistorySizeVarPath) : null;
+            object obj = executionContext?.GetVariableValue(SpecialVariables.HistorySizeVarPath);
             if (obj != null)
             {
                 try
@@ -1315,7 +1315,7 @@ namespace Microsoft.PowerShell.Commands
         /// in the pipeline. If there are more than one element in pipeline
         /// (ex A | Invoke-History 2 | B) then we cannot do this replacement.
         /// </summary>
-        private void ReplaceHistoryString(HistoryInfo entry, LocalRunspace localRunspace)
+        private static void ReplaceHistoryString(HistoryInfo entry, LocalRunspace localRunspace)
         {
             var pipeline = (LocalPipeline)localRunspace.GetCurrentlyRunningPipeline();
             if (pipeline.AddToHistory)
@@ -1433,6 +1433,7 @@ namespace Microsoft.PowerShell.Commands
                 {
                     break;
                 }
+
                 // Read CommandLine property
                 if (!(GetPropertyValue(mshObject, "CommandLine") is string commandLine))
                 {
@@ -1441,109 +1442,32 @@ namespace Microsoft.PowerShell.Commands
 
                 // Read ExecutionStatus property
                 object pipelineState = GetPropertyValue(mshObject, "ExecutionStatus");
-                if (pipelineState == null)
-                {
-                    break;
-                }
-
-                PipelineState executionStatus;
-                if (pipelineState is PipelineState)
-                {
-                    executionStatus = (PipelineState)pipelineState;
-                }
-                else if (pipelineState is PSObject)
-                {
-                    PSObject serializedPipelineState = pipelineState as PSObject;
-                    object baseObject = serializedPipelineState.BaseObject;
-                    if (baseObject is not int)
-                    {
-                        break;
-                    }
-
-                    executionStatus = (PipelineState)baseObject;
-                    if (executionStatus < PipelineState.NotStarted || executionStatus > PipelineState.Failed)
-                    {
-                        break;
-                    }
-                }
-                else if (pipelineState is string)
-                {
-                    try
-                    {
-                        executionStatus = (PipelineState)Enum.Parse(typeof(PipelineState), (string)pipelineState);
-                    }
-                    catch (ArgumentException)
-                    {
-                        break;
-                    }
-                }
-                else
+                if (pipelineState == null || !LanguagePrimitives.TryConvertTo<PipelineState>(pipelineState, out PipelineState executionStatus))
                 {
                     break;
                 }
 
                 // Read StartExecutionTime property
-                DateTime startExecutionTime;
                 object temp = GetPropertyValue(mshObject, "StartExecutionTime");
-                if (temp == null)
-                {
-                    break;
-                }
-                else if (temp is DateTime)
-                {
-                    startExecutionTime = (DateTime)temp;
-                }
-                else if (temp is string)
-                {
-                    try
-                    {
-                        startExecutionTime = DateTime.Parse((string)temp, System.Globalization.CultureInfo.CurrentCulture);
-                    }
-                    catch (FormatException)
-                    {
-                        break;
-                    }
-                }
-                else
+                if (temp == null || !LanguagePrimitives.TryConvertTo<DateTime>(temp, out DateTime startExecutionTime))
                 {
                     break;
                 }
 
                 // Read EndExecutionTime property
-                DateTime endExecutionTime;
                 temp = GetPropertyValue(mshObject, "EndExecutionTime");
-                if (temp == null)
-                {
-                    break;
-                }
-                else if (temp is DateTime)
-                {
-                    endExecutionTime = (DateTime)temp;
-                }
-                else if (temp is string)
-                {
-                    try
-                    {
-                        endExecutionTime = DateTime.Parse((string)temp, System.Globalization.CultureInfo.CurrentCulture);
-                    }
-                    catch (FormatException)
-                    {
-                        break;
-                    }
-                }
-                else
+                if (temp == null || !LanguagePrimitives.TryConvertTo<DateTime>(temp, out DateTime endExecutionTime))
                 {
                     break;
                 }
 
-                return new HistoryInfo
-                            (
-                                0,
-                                commandLine,
-                                executionStatus,
-                                startExecutionTime,
-                                endExecutionTime
-                            );
+                return new HistoryInfo(
+                    pipelineId: 0,
+                    commandLine,
+                    executionStatus,
+                    startExecutionTime,
+                    endExecutionTime
+                );
             } while (false);
 
             // If we are here, an error has occured.
@@ -1814,9 +1738,9 @@ namespace Microsoft.PowerShell.Commands
             else
             {
                 // confirmation message if all the clearhistory cmdlet is used without any parameters
-                if (_countParameterSpecified == false)
+                if (!_countParameterSpecified)
                 {
-                    string message = StringUtil.Format(HistoryStrings.ClearHistoryWarning, "Warning");// "The command would clear all the entry(s) from the session history,Are you sure you want to continue ?";
+                    string message = StringUtil.Format(HistoryStrings.ClearHistoryWarning, "Warning"); // "The command would clear all the entry(s) from the session history,Are you sure you want to continue ?";
                     if (!ShouldProcess(message))
                     {
                         return;
@@ -1897,10 +1821,10 @@ namespace Microsoft.PowerShell.Commands
 
         /// <summary>
         /// Clears the session history based on the input parameter
-        /// <param name="id" >Id of the entry to be cleared.</param>
-        /// <param name="count" >Count of entries to be cleared.</param>
-        /// <param name="cmdline" >Cmdline string to be cleared.</param>
-        /// <param name="newest" >Order of the entries.</param>
+        /// <param name="id">Id of the entry to be cleared.</param>
+        /// <param name="count">Count of entries to be cleared.</param>
+        /// <param name="cmdline">Cmdline string to be cleared.</param>
+        /// <param name="newest">Order of the entries.</param>
         /// <returns>Nothing.</returns>
         /// </summary>
         private void ClearHistoryEntries(long id, int count, string cmdline, SwitchParameter newest)
@@ -1955,7 +1879,7 @@ namespace Microsoft.PowerShell.Commands
             // Clear the History value.
             foreach (HistoryInfo entry in _entries)
             {
-                if (entry != null && entry.Cleared == false)
+                if (entry != null && !entry.Cleared)
                     _history.ClearEntry(entry.Id);
             }
 

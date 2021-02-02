@@ -78,7 +78,7 @@ namespace System.Management.Automation
 
         // Cache of the current process' parentId
         private static int? s_currentParentProcessId;
-        private static readonly int s_currentProcessId = Process.GetCurrentProcess().Id;
+        private static readonly int s_currentProcessId = Environment.ProcessId;
 
         /// <summary>
         /// Retrieve the parent process of a process.
@@ -560,7 +560,7 @@ namespace System.Management.Automation
     /// A simple implementation of CRC32.
     /// See "CRC-32 algorithm" in https://en.wikipedia.org/wiki/Cyclic_redundancy_check.
     /// </summary>
-    internal class CRC32Hash
+    internal static class CRC32Hash
     {
         // CRC-32C polynomial representations
         private const uint polynomial = 0x1EDC6F41;

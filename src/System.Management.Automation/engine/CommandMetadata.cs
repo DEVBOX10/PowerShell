@@ -464,7 +464,10 @@ namespace System.Management.Automation
         /// </summary>
         public string DefaultParameterSetName
         {
-            get { return _defaultParameterSetName; }
+            get
+            {
+                return _defaultParameterSetName;
+            }
 
             set
             {
@@ -528,7 +531,10 @@ namespace System.Management.Automation
                 return _remotingCapability;
             }
 
-            set { _remotingCapability = value; }
+            set
+            {
+                _remotingCapability = value;
+            }
         }
 
         private RemotingCapability _remotingCapability = RemotingCapability.PowerShell;
@@ -680,7 +686,7 @@ namespace System.Management.Automation
 
             // Determine if the cmdlet implements dynamic parameters by looking for the interface
 
-            Type dynamicParametersType = CommandType.GetInterface(typeof(IDynamicParameters).Name, true);
+            Type dynamicParametersType = CommandType.GetInterface(nameof(IDynamicParameters), true);
 
             if (dynamicParametersType != null)
             {
@@ -926,7 +932,7 @@ end
                     separator = ", ";
                 }
 
-                if (PositionalBinding == false)
+                if (!PositionalBinding)
                 {
                     decl.Append(separator);
                     decl.Append("PositionalBinding=$false");
@@ -1316,7 +1322,7 @@ end
             List<CommandMetadata> restrictedCommands = new List<CommandMetadata>();
 
             // all remoting cmdlets need to be included for workflow scenarios as wel
-            if (SessionCapabilities.RemoteServer == (sessionCapabilities & SessionCapabilities.RemoteServer))
+            if ((sessionCapabilities & SessionCapabilities.RemoteServer) == SessionCapabilities.RemoteServer)
             {
                 restrictedCommands.AddRange(GetRestrictedRemotingCommands());
             }

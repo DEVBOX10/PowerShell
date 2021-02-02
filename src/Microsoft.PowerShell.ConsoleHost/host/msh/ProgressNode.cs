@@ -40,15 +40,14 @@ namespace Microsoft.PowerShell
             /// The node will be displayed the same as Full, plus, the whole StatusDescription and CurrentOperation will be displayed (in multiple lines if needed).
             /// </summary>
             FullPlus = 4,
-        };
+        }
 
         /// <summary>
         /// Constructs an instance from a ProgressRecord.
         /// </summary>
         internal
         ProgressNode(Int64 sourceId, ProgressRecord record)
-            :
-            base(record.ActivityId, record.Activity, record.StatusDescription)
+            : base(record.ActivityId, record.Activity, record.StatusDescription)
         {
             Dbg.Assert(record.RecordType == ProgressRecordType.Processing, "should only create node for Processing records");
 
