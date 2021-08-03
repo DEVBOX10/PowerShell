@@ -1843,6 +1843,7 @@ namespace System.Management.Automation
         {
             Reset,
             FormatAccent,
+            TableHeader,
             ErrorAccent,
             Error,
             Warning,
@@ -1870,6 +1871,8 @@ namespace System.Management.Automation
                         return psstyle.Reset;
                     case FormatStyle.FormatAccent:
                         return psstyle.Formatting.FormatAccent;
+                    case FormatStyle.TableHeader:
+                        return psstyle.Formatting.TableHeader;
                     case FormatStyle.ErrorAccent:
                         return psstyle.Formatting.ErrorAccent;
                     case FormatStyle.Error:
@@ -2072,6 +2075,8 @@ namespace System.Management.Automation.Internal
         internal static bool BypassOnlineHelpRetrieval;
         internal static bool ForcePromptForChoiceDefaultOption;
         internal static bool BypassOutputRedirectionCheck;
+        internal static bool NoPromptForPassword;
+        internal static bool ForceFormatListFixedLabelWidth;
 
         // Stop/Restart/Rename Computer tests
         internal static bool TestStopComputer;
@@ -2307,6 +2312,14 @@ namespace System.Management.Automation.Internal
         internal static void NotNullOrEmpty(string value, string paramName)
         {
             if (string.IsNullOrEmpty(value))
+            {
+                throw new ArgumentNullException(paramName);
+            }
+        }
+
+        internal static void NotNullOrEmpty(ICollection value, string paramName)
+        {
+            if (value == null || value.Count == 0)
             {
                 throw new ArgumentNullException(paramName);
             }

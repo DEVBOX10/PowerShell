@@ -272,6 +272,26 @@ namespace System.Management.Automation.Internal
 
 namespace System.Management.Automation
 {
+    #region NativeArgumentPassingStyle
+    /// <summary>
+    /// Defines the different native command argument parsing options.
+    /// </summary>
+    public enum NativeArgumentPassingStyle
+    {
+        /// <summary>Use legacy argument parsing via ProcessStartInfo.Arguments.</summary>
+        Legacy = 0,
+
+        /// <summary>Use new style argument passing via ProcessStartInfo.ArgumentList.</summary>
+        Standard = 1,
+
+        /// <summary>
+        /// Use specific to Windows passing style which is Legacy for selected files on Windows, but
+        /// Standard for everything else. This is the default behavior for Windows.
+        /// </summary>
+        Windows = 2
+    }
+    #endregion NativeArgumentPassingStyle
+
     #region ErrorView
     /// <summary>
     /// Defines the potential ErrorView options.
@@ -286,6 +306,9 @@ namespace System.Management.Automation
 
         /// <summary>Concise shows more information on the context of the error or just the message if not a script or parser error.</summary>
         ConciseView = 2,
+
+        /// <summary>Detailed will leverage Get-Error to get much more detailed information for the error.</summary>
+        DetailedView = 3,
     }
     #endregion ErrorView
 

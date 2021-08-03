@@ -331,10 +331,10 @@ namespace System.Diagnostics.Eventing
                 *uintptr = (uint)data;
                 dataDescriptor->DataPointer = (ulong)uintptr;
             }
-            else if (data is UInt64)
+            else if (data is ulong)
             {
                 dataDescriptor->Size = (uint)sizeof(ulong);
-                UInt64* ulongptr = (ulong*)dataBuffer;
+                ulong* ulongptr = (ulong*)dataBuffer;
                 *ulongptr = (ulong)data;
                 dataDescriptor->DataPointer = (ulong)ulongptr;
             }
@@ -510,7 +510,7 @@ namespace System.Diagnostics.Eventing
 
             if (data == null)
             {
-                throw new ArgumentNullException("dataString");
+                throw new ArgumentNullException(nameof(data));
             }
 
             if (IsEnabled(eventDescriptor.Level, eventDescriptor.Keywords))
