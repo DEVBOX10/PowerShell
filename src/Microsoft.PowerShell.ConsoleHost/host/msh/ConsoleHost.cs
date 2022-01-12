@@ -16,6 +16,7 @@ using System.Management.Automation.Host;
 using System.Management.Automation.Internal;
 using System.Management.Automation.Language;
 using System.Management.Automation.Remoting;
+using System.Management.Automation.Remoting.Server;
 using System.Management.Automation.Runspaces;
 using System.Management.Automation.Tracing;
 using System.Reflection;
@@ -193,30 +194,37 @@ namespace Microsoft.PowerShell
                 {
                     ApplicationInsightsTelemetry.SendPSCoreStartupTelemetry("ServerMode");
                     ProfileOptimization.StartProfile("StartupProfileData-ServerMode");
-                    System.Management.Automation.Remoting.Server.OutOfProcessMediator.Run(s_cpp.InitialCommand, s_cpp.WorkingDirectory);
-                    exitCode = 0;
-                }
-                else if (s_cpp.NamedPipeServerMode)
-                {
-                    ApplicationInsightsTelemetry.SendPSCoreStartupTelemetry("NamedPipe");
-                    ProfileOptimization.StartProfile("StartupProfileData-NamedPipeServerMode");
-                    System.Management.Automation.Remoting.RemoteSessionNamedPipeServer.RunServerMode(
-                        s_cpp.ConfigurationName);
+                    StdIOProcessMediator.Run(
+                        initialCommand: s_cpp.InitialCommand,
+                        workingDirectory: s_cpp.WorkingDirectory,
+                        configurationName: null);
                     exitCode = 0;
                 }
                 else if (s_cpp.SSHServerMode)
                 {
                     ApplicationInsightsTelemetry.SendPSCoreStartupTelemetry("SSHServer");
                     ProfileOptimization.StartProfile("StartupProfileData-SSHServerMode");
-                    System.Management.Automation.Remoting.Server.SSHProcessMediator.Run(s_cpp.InitialCommand);
+                    StdIOProcessMediator.Run(
+                        initialCommand: s_cpp.InitialCommand,
+                        workingDirectory: null,
+                        configurationName: null);
+                    exitCode = 0;
+                }
+                else if (s_cpp.NamedPipeServerMode)
+                {
+                    ApplicationInsightsTelemetry.SendPSCoreStartupTelemetry("NamedPipe");
+                    ProfileOptimization.StartProfile("StartupProfileData-NamedPipeServerMode");
+                    RemoteSessionNamedPipeServer.RunServerMode(
+                        configurationName: s_cpp.ConfigurationName);
                     exitCode = 0;
                 }
                 else if (s_cpp.SocketServerMode)
                 {
                     ApplicationInsightsTelemetry.SendPSCoreStartupTelemetry("SocketServerMode");
                     ProfileOptimization.StartProfile("StartupProfileData-SocketServerMode");
-                    System.Management.Automation.Remoting.Server.HyperVSocketMediator.Run(s_cpp.InitialCommand,
-                        s_cpp.ConfigurationName);
+                    HyperVSocketMediator.Run(
+                        initialCommand: s_cpp.InitialCommand,
+                        configurationName: s_cpp.ConfigurationName);
                     exitCode = 0;
                 }
                 else
@@ -425,7 +433,7 @@ namespace Microsoft.PowerShell
                     host.ShouldEndSession = shouldEndSession;
                 }
 
-                // Creation of the tread and starting it should be an atomic operation.
+                // Creation of the thread and starting it should be an atomic operation.
                 // otherwise the code in Run method can get instance of the breakhandlerThread
                 // after it is created and before started and call join on it. This will result
                 // in ThreadStateException.
@@ -2715,7 +2723,7 @@ namespace Microsoft.PowerShell
                 }
                 else
                 {
-                    // an exception ocurred when the command was executed.  Tell the user about it.
+                    // an exception occurred when the command was executed.  Tell the user about it.
                     _parent.ReportException(e, _exec);
                 }
 

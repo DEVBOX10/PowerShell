@@ -367,7 +367,7 @@ Describe "TabCompletion" -Tags CI {
         }
 
         It 'Should complete Get-ChildItem | <cmd> -View' -TestCases (
-            @{ cmd = 'Format-Table'; expected = "children childrenWithHardlink$(if ($EnabledExperimentalFeatures.Contains('PSUnixFileStat')) { ' childrenWithUnixStat' })" },
+            @{ cmd = 'Format-Table'; expected = "children childrenWithHardlink$(if (!$IsWindows) { ' childrenWithUnixStat' })" },
             @{ cmd = 'Format-List'; expected = 'children' },
             @{ cmd = 'Format-Wide'; expected = 'children' },
             @{ cmd = 'Format-Custom'; expected = '' }
@@ -1097,6 +1097,14 @@ Describe "TabCompletion" -Tags CI {
             $entry.CompletionText | Should -BeExactly "Mandatory"
         }
 
+        It "Test Attribute scriptblock completion" {
+            $inputStr = '[ValidateScript({Get-Child})]$Test=ls'
+            $res = TabExpansion2 -inputScript $inputStr -cursorColumn ($inputStr.IndexOf('}'))
+            $res.CompletionMatches | Should -HaveCount 1
+            $entry = $res.CompletionMatches | Where-Object CompletionText -EQ "Get-ChildItem"
+            $entry.CompletionText | Should -BeExactly "Get-ChildItem"
+        }
+
         It "Test completion with line continuation" {
             $inputStr = @'
 dir -Recurse `
@@ -1133,6 +1141,27 @@ dir -Recurse `
             $res = TabExpansion2 -inputScript $inputStr -cursorColumn $inputStr.Length
             $res.CompletionMatches | Should -HaveCount 4
             [string]::Join(',', ($res.CompletionMatches.completiontext | Sort-Object)) | Should -BeExactly "-Path,-PipelineVariable,-PSPath,-pv"
+        }
+
+        It "Test completion for HttpVersion parameter name" {
+            $inputStr = 'Invoke-WebRequest -HttpV'
+            $res = TabExpansion2 -inputScript $inputStr -cursorColumn $inputStr.Length
+            $res.CompletionMatches | Should -HaveCount 1
+            $res.CompletionMatches[0].CompletionText | Should -BeExactly "-HttpVersion"
+        }
+
+        It "Test completion for HttpVersion parameter" {
+            $inputStr = 'Invoke-WebRequest -HttpVersion '
+            $res = TabExpansion2 -inputScript $inputStr -cursorColumn $inputStr.Length
+            $res.CompletionMatches | Should -HaveCount 4
+            [string]::Join(',', ($res.CompletionMatches.completiontext | Sort-Object)) | Should -BeExactly "1.0,1.1,2.0,3.0"
+        }
+
+        It "Test completion for HttpVersion parameter with input" {
+            $inputStr = 'Invoke-WebRequest -HttpVersion 1'
+            $res = TabExpansion2 -inputScript $inputStr -cursorColumn $inputStr.Length
+            $res.CompletionMatches | Should -HaveCount 2
+            [string]::Join(',', ($res.CompletionMatches.completiontext | Sort-Object)) | Should -BeExactly "1.0,1.1"
         }
     }
 

@@ -1578,23 +1578,33 @@ namespace System.Management.Automation
 
         internal static bool SuspendStoppingPipeline(ExecutionContext context)
         {
-            LocalPipeline lpl = (LocalPipeline)context.CurrentRunspace.GetCurrentlyRunningPipeline();
-            if (lpl != null)
+            var localPipeline = (LocalPipeline)context.CurrentRunspace.GetCurrentlyRunningPipeline();
+            return SuspendStoppingPipelineImpl(localPipeline);
+        }
+
+        internal static void RestoreStoppingPipeline(ExecutionContext context, bool oldIsStopping)
+        {
+            var localPipeline = (LocalPipeline)context.CurrentRunspace.GetCurrentlyRunningPipeline();
+            RestoreStoppingPipelineImpl(localPipeline, oldIsStopping);
+        }
+
+        internal static bool SuspendStoppingPipelineImpl(LocalPipeline localPipeline)
+        {
+            if (localPipeline is not null)
             {
-                bool oldIsStopping = lpl.Stopper.IsStopping;
-                lpl.Stopper.IsStopping = false;
+                bool oldIsStopping = localPipeline.Stopper.IsStopping;
+                localPipeline.Stopper.IsStopping = false;
                 return oldIsStopping;
             }
 
             return false;
         }
 
-        internal static void RestoreStoppingPipeline(ExecutionContext context, bool oldIsStopping)
+        internal static void RestoreStoppingPipelineImpl(LocalPipeline localPipeline, bool oldIsStopping)
         {
-            LocalPipeline lpl = (LocalPipeline)context.CurrentRunspace.GetCurrentlyRunningPipeline();
-            if (lpl != null)
+            if (localPipeline is not null)
             {
-                lpl.Stopper.IsStopping = oldIsStopping;
+                localPipeline.Stopper.IsStopping = oldIsStopping;
             }
         }
 
@@ -2855,6 +2865,11 @@ namespace System.Management.Automation
             ScriptBlock sb = expression as ScriptBlock;
             if (sb != null)
             {
+                if (sb.HasCleanBlock)
+                {
+                    throw new PSNotSupportedException(ParserStrings.ForEachNotSupportCleanBlock);
+                }
+
                 Pipe outputPipe = new Pipe(result);
                 if (sb.HasBeginBlock)
                 {
@@ -3529,6 +3544,71 @@ namespace System.Management.Automation
             }
 
             return result;
+        }
+    }
+
+    internal static class MemberInvocationLoggingOps
+    {
+        private static readonly Lazy<bool> DumpLogAMSIContent = new Lazy<bool>(
+            () => {
+                object result = Environment.GetEnvironmentVariable("__PSDumpAMSILogContent");
+                if (result != null && LanguagePrimitives.TryConvertTo(result, out int value))
+                {
+                    return value == 1;
+                }
+                return false;
+            }
+        );
+
+        internal static void LogMemberInvocation(string targetName, string name, object[] args)
+        {
+            try
+            {
+                var contentName = "PowerShellMemberInvocation";
+                var argsBuilder = new Text.StringBuilder();
+
+                for (int i = 0; i < args.Length; i++)
+                {
+                    string value = args[i] is null ? "null" : args[i].ToString();
+
+                    if (i > 0)
+                    {
+                        argsBuilder.Append(", ");
+                    }
+
+                    argsBuilder.Append($"<{value}>");
+                }
+
+                string content = $"<{targetName}>.{name}({argsBuilder})";
+
+                if (DumpLogAMSIContent.Value)
+                {
+                    Console.WriteLine("\n=== Amsi notification report content ===");
+                    Console.WriteLine(content);
+                }
+
+                var success = AmsiUtils.ReportContent(
+                    name: contentName,
+                    content: content);
+
+                if (DumpLogAMSIContent.Value)
+                {
+                    Console.WriteLine($"=== Amsi notification report success: {success} ===");
+                }
+            }
+            catch (PSSecurityException)
+            {
+                // ReportContent() will throw PSSecurityException if AMSI detects malware, which 
+                // must be propagated.
+                throw;
+            }
+            catch (Exception ex)
+            {
+                if (DumpLogAMSIContent.Value)
+                {
+                    Console.WriteLine($"!!! Amsi notification report exception: {ex} !!!");
+                }
+            }
         }
     }
 }
